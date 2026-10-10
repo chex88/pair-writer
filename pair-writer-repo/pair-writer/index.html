@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pair Writer: three-arm message experiment</title>
+<style>
+:root{--bg:#f2f5f3;--panel:#fff;--ink:#14201c;--mute:#5a6b65;--line:#d3ddd8;--acc:#0f6b5c;--acc-ink:#fff;--bad:#b4531a;--ok:#1f7a45;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101815;--panel:#18231f;--ink:#e6efeb;--mute:#93a69e;--line:#2c3c36;--acc:#4fc1a8;--acc-ink:#07130f;--bad:#f0905a;--ok:#6fd49a}}
+:root[data-theme="dark"]{--bg:#101815;--panel:#18231f;--ink:#e6efeb;--mute:#93a69e;--line:#2c3c36;--acc:#4fc1a8;--acc-ink:#07130f;--bad:#f0905a;--ok:#6fd49a}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 48px}
+h1{font:600 26px/1.2 Georgia,"Times New Roman",serif;margin:0 0 4px}
+h2{font-size:15px;margin:0 0 10px}
+p.sub{color:var(--mute);margin:0 0 18px;font-size:14px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 3px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px}
+textarea{min-height:84px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+button{font:inherit;font-weight:600;border:1px solid var(--acc);background:var(--acc);color:var(--acc-ink);border-radius:6px;padding:8px 14px;cursor:pointer;margin:10px 8px 0 0}
+button.ghost{background:transparent;color:var(--acc)}
+button:disabled{opacity:.45;cursor:default}
+.arms{display:flex;gap:8px;flex-wrap:wrap}
+.arms button{margin:0}
+.arms button.on{background:var(--acc);color:var(--acc-ink)}
+.arms button:not(.on){background:transparent;color:var(--acc)}
+.msg{white-space:pre-wrap;background:var(--bg);border-left:3px solid var(--acc);padding:10px 12px;border-radius:4px}
+.claim{font-size:13px;margin:4px 0}.ok{color:var(--ok)}.bad{color:var(--bad);font-weight:600}
+.timer{font:600 22px/1 ui-monospace,Menlo,monospace}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}
+.note{font-size:13px;color:var(--mute)}.err{color:var(--bad);font-size:14px;margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+<h1>Pair Writer</h1>
+<p class="sub">One message brief, three ways to write it. Every run is timed and logged so the three arms can be compared.</p>
+
+<section>
+<h2>Facts the messages may use</h2>
+<p class="note">Drafts may only claim what is listed here. Use public, brochure-level facts only. One fact per line, starting with F1, F2, and so on.</p>
+<textarea id="facts">F1: Captavis Biocare is a WHO-GMP manufacturer of softgel capsules.
+F2: (add a public fact, for example product range)
+F3: (add a public fact, for example export markets served)</textarea>
+</section>
+
+<section>
+<h2>Arm</h2>
+<div class="arms" id="arms">
+<button data-arm="1">1. Person alone</button>
+<button data-arm="2">2. Agent alone</button>
+<button data-arm="3" class="on">3. Pair</button>
+</div>
+<p class="note" id="armHelp"></p>
+</section>
+
+<section>
+<h2>Message brief</h2>
+<div class="row">
+<div><label for="label">Run label (same across arms, e.g. B1)</label><input id="label" placeholder="B1"></div>
+<div><label for="channel">Channel</label><select id="channel"><option>Email</option><option>LinkedIn message</option><option>WhatsApp</option></select></div>
+</div>
+<label for="aud">Who is it for? (required)</label><input id="aud" placeholder="e.g. Head of sourcing at a nutraceutical distributor in Vietnam">
+<label for="tone">Tone (required)</label><input id="tone" placeholder="e.g. direct, respectful, no hype">
+<label for="goal">Goal of the message</label><input id="goal" placeholder="e.g. get a 20-minute intro call">
+<label for="spec">Specifics only you know (dates, sizes, past contact; optional, pair arm only)</label><input id="spec" placeholder="e.g. exhibition in Nov 2026, 27 sq m shell scheme">
+<label for="ex">Example of a message that worked (optional)</label><textarea id="ex"></textarea>
+<div id="a1box" hidden>
+<label for="own">Paste the finished message (person alone)</label><textarea id="own"></textarea>
+</div>
+<button id="go"></button>
+<span class="timer" id="timer">0:00</span>
+<div class="err" id="err"></div>
+<div id="manual" hidden><p class="note">The agent can't run in this view. Copy the prompt below into a new claude.ai chat, then paste Claude's reply into the second box. The timer keeps running while you do this, so the time for this run is not comparable.</p><textarea id="mprompt" readonly></textarea><textarea id="min" placeholder="Paste Claude's reply here"></textarea><button id="museit">Use pasted reply</button></div>
+</section>
+
+<section id="out" hidden>
+<h2>Draft</h2>
+<div class="msg" id="draft"></div>
+<div id="claims"></div>
+<div id="fb">
+<div class="row">
+<div><label for="score">Your score for this draft (1 to 5)</label><select id="score"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select></div>
+<div><label for="tag">What is the main issue?</label><select id="tag"><option value="">Choose one</option><option>Good</option><option>Wrong audience</option><option>Wrong tone</option><option>Inaccurate claim</option><option>Too long</option></select></div>
+</div>
+<button id="revise" class="ghost">Revise with score and tag</button>
+</div>
+<button id="accept">Accept and log</button>
+<button id="reject" class="ghost">Reject and log</button>
+</section>
+
+<section>
+<h2>Run log</h2>
+<div class="scroll"><table><thead><tr><th>Label</th><th>Arm</th><th>Seconds</th><th>Rounds</th><th>Score</th><th>Tag</th><th>Accepted</th><th>Unsupported claims</th></tr></thead><tbody id="log"></tbody></table></div>
+<button id="csv">Download CSV</button><button id="clear" class="ghost">Clear log</button>
+<textarea id="csvbox" hidden readonly></textarea>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let arm="3",runs=[],cur=null,t0=0,tick=null,sample=null,dl=null;
+try{runs=JSON.parse(localStorage.getItem("pw_runs")||"[]")}catch(e){runs=[]}
+const HELP={1:"Person writes alone. Press Start, write the message in your usual way, paste it, then press Stop and log.",2:"Agent writes one draft from the brief. No edits and no feedback. The timer covers generation only.",3:"Agent drafts, the person gives a score and one tag, the agent revises using only those. Up to 3 rounds."};
+function saveRuns(){try{localStorage.setItem("pw_runs",JSON.stringify(runs))}catch(e){}}
+function fmt(s){return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
+function startTimer(){t0=Date.now();clearInterval(tick);tick=setInterval(()=>{$("timer").textContent=fmt(Math.round((Date.now()-t0)/1000))},500)}
+function stopTimer(){clearInterval(tick);return Math.round((Date.now()-t0)/1000)}
+function setArm(a){arm=a;document.querySelectorAll("#arms button").forEach(b=>b.classList.toggle("on",b.dataset.arm===a));
+$("armHelp").textContent=HELP[a];$("a1box").hidden=a!=="1";$("out").hidden=true;cur=null;
+$("go").textContent=a==="1"?"Start timer":"Generate draft";$("fb").hidden=a!=="3";$("accept").textContent=a==="1"?"Stop and log":"Accept and log";$("err").textContent=""}
+document.querySelectorAll("#arms button").forEach(b=>b.onclick=()=>setArm(b.dataset.arm));
+function render(){const tb=$("log");tb.textContent="";
+runs.forEach(r=>{const tr=document.createElement("tr");
+[r.label,r.arm,r.secs,r.rounds,r.score,r.tag,r.accepted?"yes":"no",r.unsupported].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});tb.appendChild(tr)})}
+function brief(){return{audience:$("aud").value.trim(),tone:$("tone").value.trim(),goal:$("goal").value.trim(),specifics:$("spec").value.trim(),channel:$("channel").value,example:$("ex").value.trim(),label:$("label").value.trim()||"run"+(runs.length+1)}}
+async function draft(b,prev,fb){
+const prompt=`You write one sales message for a pharmaceutical softgel manufacturer.
+Rules: use ONLY the facts in FACTS and the writer's SPECIFICS. Never invent numbers, certifications, customers or claims. Keep it short and fit for the channel.
+Return JSON only, no markdown: {"message":"...","claims":[{"text":"each factual claim in the message","fact":"F1 or null if not in FACTS"}]}
+FACTS:
+${$("facts").value}
+AUDIENCE: ${b.audience}
+TONE: ${b.tone}
+GOAL: ${b.goal||"not stated"}
+SPECIFICS FROM THE WRITER (treat as true, use where relevant): ${b.specifics||"none"}
+CHANNEL: ${b.channel}
+${b.example?"EXAMPLE OF A MESSAGE THAT WORKED:\n"+b.example:""}
+${prev?`PREVIOUS DRAFT:\n${prev}\nFEEDBACK (score out of 5 and one tag only): ${fb.score}/5, ${fb.tag}. Revise accordingly.`:""}`;
+lastPrompt=prompt;if(!sample){const e=new Error("no agent");e.code="no_sample";throw e}return await sample.json(prompt,{cache:false});}
+function show(res){cur.message=res.message;cur.claims=res.claims||[];$("draft").textContent=res.message;
+const c=$("claims");c.textContent="";cur.unsupported=0;
+cur.claims.forEach(x=>{const d=document.createElement("div");d.className="claim";
+const ok=x.fact&&/^F\d+$/.test(x.fact);if(!ok)cur.unsupported++;
+d.className+=ok?" ok":" bad";d.textContent=(ok?x.fact+": ":"UNSUPPORTED: ")+x.text;c.appendChild(d)});
+$("out").hidden=false}
+$("go").onclick=async()=>{
+$("err").textContent="";const b=brief();
+if(arm==="1"){cur={...b,arm:1,rounds:0,unsupported:0};startTimer();$("out").hidden=false;$("draft").textContent="Timer running. Write the message, paste it above, then press Stop and log.";$("claims").textContent="";$("fb").hidden=true;$("reject").hidden=true;return}
+if(!b.audience||!b.tone){$("err").textContent="Fill in who the message is for and the tone. The agent needs both.";return}
+await ensureSample();
+cur={...b,arm:+arm,rounds:1,score:"",tag:""};$("go").disabled=true;startTimer();
+try{show(await draft(b));if(arm==="2")stopTimer(),cur.secs=Math.round((Date.now()-t0)/1000)}catch(e){if(e.code==="no_sample")showManual();else $("err").textContent="Draft failed: "+(e.message||e.code||"try again")}
+$("go").disabled=false;$("fb").hidden=arm!=="3";$("reject").hidden=false};
+$("revise").onclick=async()=>{if(!cur||cur.rounds>=3){$("err").textContent="Round limit reached. Accept or reject.";return}
+const fb={score:$("score").value,tag:$("tag").value};if(!fb.tag){$("err").textContent="Choose the main issue before revising.";return}cur.score=fb.score;cur.tag=fb.tag;$("revise").disabled=true;
+try{await ensureSample();show(await draft(cur,cur.message,fb));cur.rounds++}catch(e){if(e.code==="no_sample"){cur.pend=1;showManual()}else $("err").textContent="Revision failed: "+(e.message||e.code||"try again")}
+$("revise").disabled=false};
+function logRun(ok){if(!cur)return;
+if(cur.arm===1){cur.secs=stopTimer();cur.message=$("own").value.trim();if(!cur.message){$("err").textContent="Paste the finished message first.";startTimer();t0=Date.now()-cur.secs*1000;return}cur.score="";cur.tag=""}
+else if(cur.arm===3){cur.secs=Math.round((Date.now()-t0)/1000);clearInterval(tick);cur.score=$("score").value;cur.tag=$("tag").value}
+else{cur.score="";cur.tag=""}
+runs.push({label:cur.label,arm:cur.arm,secs:cur.secs,rounds:cur.rounds,score:cur.score,tag:cur.tag,accepted:ok,unsupported:cur.unsupported,audience:cur.audience,tone:cur.tone,message:(cur.message||"").replace(/\s+/g," ")});
+saveRuns();render();cur=null;$("out").hidden=true;$("timer").textContent="0:00";$("own").value=""}
+$("accept").onclick=()=>logRun(true);$("reject").onclick=()=>logRun(false);
+$("clear").onclick=()=>{if(confirm("Delete all logged runs?")){runs=[];saveRuns();render()}};
+$("csv").onclick=async()=>{const cols=["label","arm","secs","rounds","score","tag","accepted","unsupported","audience","tone","message"];
+const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+const csv=[cols.join(",")].concat(runs.map(r=>cols.map(c=>q(r[c])).join(","))).join("\n");
+try{if(dl){await dl.save({filename:"runs.csv",data:csv});return}}catch(e){}
+$("csvbox").hidden=false;$("csvbox").value=csv;$("csvbox").select()};
+let lastPrompt="";
+async function ensureSample(){if(sample)return;try{sample=await claude.use("sample")}catch(e){}
+if(!sample){try{const p=await claude.use("permissions");if(p&&p.request){await p.request(["sample"]);sample=await claude.use("sample")}}catch(e){}}}
+function showManual(){$("mprompt").value=lastPrompt;$("manual").hidden=false;$("go").disabled=false;$("revise").disabled=false}
+$("museit").onclick=()=>{if(!cur)return;let raw=$("min").value.trim().replace(/^```(?:json)?|```$/g,"").trim();if(!raw){$("err").textContent="Paste Claude's reply first.";return}
+let res;const fixed=raw.replace(/[“”]/g,'"').replace(/""\s*}/g,'"}');
+try{res=JSON.parse(fixed);if(!res.message)throw 0}catch(e){const m=fixed.match(/"message"\s*:\s*"([\s\S]*?)"\s*,\s*"claims"/);const fs=[...fixed.matchAll(/"fact"\s*:\s*(null|"F\d+")/g)];
+res=m?{message:m[1].replace(/\\n/g,"\n"),claims:fs.map(x=>({text:"(claim)",fact:x[1]==="null"?null:x[1].replace(/"/g,"")}))}:{message:raw,claims:[]}}
+if(cur.pend){cur.rounds++;cur.pend=0}
+if(cur.arm===2){stopTimer();cur.secs=Math.round((Date.now()-t0)/1000)}
+$("manual").hidden=true;$("min").value="";$("err").textContent="";show(res)};
+setArm("3");render();
+if(window.claude&&claude.use){claude.use("sample").then(s=>{sample=s}).catch(()=>{});claude.use("downloads").then(d=>{dl=d}).catch(()=>{})}
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "pair-writer-loop",
+  "description": "Workflow specification of the human+agent loop (not an n8n import file). The channel between the two sides carries only a score and one tag.",
+  "arms": {
+    "1_person_alone": ["start_timer", "person_writes_message", "stop_timer", "log_run"],
+    "2_agent_alone": ["collect_brief(audience,tone,goal,channel,example)", "agent_draft(facts_only)", "fact_trace(claims->F#)", "log_run(no_edits)"],
+    "3_pair": [
+      "collect_brief(audience,tone,goal,channel,example)",
+      "agent_draft(facts_only)",
+      "fact_trace(claims->F#)",
+      "person_scores(score_1to5, tag)",
+      "agent_revise(previous_draft, score, tag)",
+      "repeat_max_3_rounds",
+      "person_accepts_or_rejects",
+      "log_run"
+    ]
+  },
+  "channel_rule": "Only a scored result and one tag cross from person to agent. No free-text advice.",
+  "forced_inputs": ["audience", "tone"],
+  "evaluation": ["blind_pack.py", "judge_scores(accuracy, audience_fit, send_as_is)", "analyze.py"]
+}
